@@ -6,13 +6,11 @@ output:
 
 # Landscape & Resources {#env}
 
-
-To simulate the interaction between two groups, we need an environment where they can interact. This chapter covers how to generate a landscape and an environment for your simulated groups.
-An essential part of the simulation is to generate a realistic landscape and environment. Environmental variables are often auto-correlated. For example, the temperature recorded at a given time is similar to that recorded just before or after that particular moment. Similarly, topographic variables such as slope or elevation tend to be similar at a shorter rather than larger distances.
+An essential part of the simulation is to generate a realistic landscape and environment. Environmental variables are often auto-correlated. For example, the temperature at a given point in time is similar to that just before or after that particular moment. Similarly, topographic variables such as slope or elevation tend to not change much over very short distances.
 
 ## Autocorrelated noise generation
 
-One way to generate such an auto-correlated variable is to use [coloured noise](https://en.wikipedia.org/wiki/Colors_of_noise). This uses a specific distribution to define the relation between frequencies found in your signal with the power of these frequencies. In [pink noise](https://en.wikipedia.org/wiki/Pink_noise) (or $\frac{1}{f}$-noise) for example, the power of each frequencis will be inversely proportional to the frequencies (_ie_ you will have, low frequencies with high power, high frequencies with low ones).  We defined an `environment` function, which in turns uses `TK95` to generate a power law noise.
+One way to generate auto-correlated variables is to use [coloured noise](https://en.wikipedia.org/wiki/Colors_of_noise) with a specific distribution to define the relation between frequencies in your signal with the power of these frequencies. In [pink noise](https://en.wikipedia.org/wiki/Pink_noise) (or $\frac{1}{f}$-noise), for example, the power of every frequency will be inversely proportional to the frequency (_ie_ you will have low frequencies with high power, high frequencies with low power). We defined an `environment` function, which in turns uses `TK95` to generate a power law noise.
 
 To generate a single auto-correlated variable (like temperature), whose spectrum decomposition (power wrt frequency) has a slope of -3 and a standard deviation of 1.5:
 
@@ -37,11 +35,11 @@ fs::file_delete('climate.Rmd')
 </details>
 
 
-This generates autocorrelated time series that can be used to define temporal change in climate (rain, temperature, etc.). But we have not used such changes for the Archaeoriddle challenge. Coloured noise remains a very straightforward way that can be easily added in the simulations.
+This generates autocorrelated time-series that can be used to define temporal change in climate (rain, temperature, etc.). Although coloured noise was not implemented for the Archaeoriddle challenge, it remains a straightforward way that can be easily added into the simulation.
 
 ## Slope and Elevation
 
-An important aspect of the simulation is to generate realistic elevation and slope values. To generate a 2D autocorrelated variable we used a method known as [perlin noise](https://en.wikipedia.org/wiki/Perlin_noise) ; using the implementation found on [this stackoverflow.com post](https://stackoverflow.com/questions/15387328/realistic-simulated-elevation-data-in-r-perlin-noise).
+An important aspect of the simulation is to generate realistic elevation and slope values. To generate a 2D auto-correlated variable, we used a method known as [perlin noise](https://en.wikipedia.org/wiki/Perlin_noise) with the implementation found on [this stackoverflow.com post](https://stackoverflow.com/questions/15387328/realistic-simulated-elevation-data-in-r-perlin-noise).
 
 <br>
 
@@ -60,7 +58,7 @@ fs::file_delete('perlin_noise.Rmd')
 </details>
 
 
-Different parameters for the Perlin noise will result in either a higher or lower level of definition for our future DEM raster. Our aim is to find a balance between having the environment sufficiently detailed across a relatively wide area, while also ensuring it remains manageable in terms of memory usage.
+Different parameters for the Perlin noise will result in either a higher or lower level of definition for our DEM raster. Our aim is to find a balance between having the environment sufficiently detailed across a relatively wide area, while also ensuring it remains manageable in terms of memory usage.
 
 ```{r perlin_noise}
 require(terra)
@@ -73,7 +71,7 @@ for ( i in 2:k )
   m <- m + a^i * perlin_noise(2^i, 2^i, 2^k, 2^k)
 ```
 
-If we change k (that dictates the total resolution of the DEM), the size of the raster grows explonentially and would quickly become hard to manage.
+If we change k (total resolution of the DEM), the size of the raster increases explonentially and would quickly become hard to manage.
 
 
 ```{r explorePerlin}
@@ -89,7 +87,7 @@ plot(2^(1:7),allsizes/1000,type="b",pch=20,col="red",cex=2,ylab="size of raster 
 
 ```
 
-To enhance realism, slight adjustments were made to the extremes to create water bodies and mountains more closely resembling those found in an real landscape.
+To enhance realism, slight adjustments were made to create water bodies and mountains resembling real-world topography.
 
 
 ```{r padjuperlin}
@@ -101,9 +99,9 @@ height[height<min(height)*.25] <- min(height)*.25
 ```
 
 
-We can then visualise the result as a 2D raster. We set up the total extent of the raster to define precisely where it is on our GIS using geographic coordinates.
+We can then visualise the result as a 2D raster. We set up the total extent of the raster to define its precise location in GIS using geographic coordinates.
 
-We also define the mean height as the water level: All the cells below are considered water bodies.
+We determined the mean height as the water level: all cells below are considered water bodies.
 
 ```{r 2dVisu}
 height.ras <- rast(height, extent=c(-3.5, 0.5, -0.5, 3.5), crs="+proj=latlon")
@@ -115,14 +113,14 @@ plot(height.wat, col="lightblue", add=T, legend=F)
 
 ```
 
-This has been put in the function `plotMap`
+This has been implemeted in function `plotMap`
 
 ```{r}
 plotMap(height.ras,height.wat)
 ```
 
 
-The actual raster used for the original _archaeoriddle_ is available in `data_original/east_narnia4x.tif` and looks like
+The actual raster used for the original _archaeoriddle_ is available in `data_original/east_narnia4x.tif` and looks like this:
 
 ```{r originalArchaeoriddle}
 original.ras <- rast("data_original/east_narnia4x.tif")
@@ -154,8 +152,9 @@ plot_3d(
 
 ## Environmental resources
 
-We will generate zones of higher resources/fitness that will attract settlements and support higher carrying capacity _ie_ population size.
-The resources will be located at given hotspots with an area around which they decay following a sigmoid function. We provide a very basic function `logisticdecay` which allows you to define multiple sources with different decay arrays around them.
+We generated zones of higher resources/environmental fitness that attract settlements and have a higher carrying capacity _ie_ support more population.
+
+The resources are located at hotspots, with decreasing values up to a certain radius around them following a sigmoid function. We provide a very basic function `logisticdecay` which allows you to define multiple sources with different decay arrays around them.
 
 
 ```{r, echo=FALSE, message=FALSE}
@@ -176,7 +175,7 @@ fs::file_delete('logistic_decay.Rmd')
 
 <br>
 
-For the original _archaeoriddle_, these hotspots and their radius were manually selected given the topography of Rabbit Hole. These manual setups are given below:
+For the original _archaeoriddle_, these hotspots and their radius were manually selected given the topography of Rabbithole. These manual setups are given below:
 
 ```{r setresource}
 ##resource geolocalisation set manually
@@ -197,12 +196,12 @@ ks <- c(0.0002, 0.0001000, 0.0001600, 0.0001800, 0.00040, .0002, 0.0002)/4
 crs(goodresources) <- crs(original.ras)
 ```
 
-The function `logisticdecay` generates individual rasters for all the identified hotspots, which are then merged to create an aggregate raster referred to as 'resources'.
+The function `logisticdecay` generates individual rasters for the hotspots, which are then merged to create an aggregated raster referred to as 'resources'.
 
-When considering the selection of hotspots, you may choose to retain the one utilized for the _archaeoriddle_ but to adjust these resources center to your own topography ;  one can use `locator()` to find the coordinates of the hotspot by clicking on the map. An example of that is given in [this  section of the chapter](#manual-selection)
+When considering the selection of hotspots, you may choose to retain the one utilized for _archaeoriddle_. However, to adjust these resources to your own topography, you can use `locator()` to define the hotspot by clicking on the map. An example is given in [this  section of the chapter](#manual-selection)
 
-These resources span along all the map, but we want to restrict them to places where people can settle.
-Given this new landscape, we can now generate sites in specific locations. We first need to define _where_ the sites _can_ appear (not in water nor too high in the mountains), so we first create a raster called 'viable', a binary map defining where groups can or cannot live.
+The resources are distributes on the map, but we want to restrict them to places where people can settle.
+Given this new landscape, we can now generate sites at specific locations. We need to define _where_ the sites _can_ appear (not in water or too high in the mountains), so we first created a raster called 'viable', a binary map defining where groups can or cannot live.
 
 ```{r}
 height.groups <- height.ras # taking back the raster created before
@@ -214,14 +213,13 @@ height.poly <- as.polygons(height.groups) # convert height.groups as polygons th
 viable <- makeValid(height.poly[2,]) # select polygon with '1' and make it a valid polygon as it may have some loop and problems
 ```
 
-We now also have a polygon called `viable` representing the space where sites can be created.
-This space is represented by the green area on the map below.
+This pricedure results in a polygon called `viable`, representing the locations where settlements can emerge (highlighted in green on the map below).
 
 ```{r,viablearea}
 plot(viable,col=adjustcolor("chartreuse",.8))
 ```
 
-We then loop over every center manually defined previously and apply the logistic decay within the `viable` raster.
+We then loop over every center manually and apply the logistic decay within the `viable` raster.
 
 ```{r groupresources}
 
@@ -238,7 +236,7 @@ allna <- sapply(allres, function(i)any(is.na(values(i))))
 allres <- allres[!allna]
 ```
 
-And then we add all the resource rasters, which gives us a final `ress` raster as below:
+And then we add the resource raster, which gives us a final `ress` raster as below:
 
 ```{r showresrouce}
 ress <- allres[[1]]
@@ -254,7 +252,7 @@ plot(ress)
 
 ## Manually Select Resources {#manual-selection}
 
-Below is some useful code to manually select the resource origins on the map (by clicking on the screen) and explore different decays around them
+Below is some useful code to manually select the resource hotspots by clicking on the map and explore different decay paramenters for them.
 
 ```{r, eval=F}
 plotMap(height.ras, height.wat, paste0("year ", 0))
